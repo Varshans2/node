@@ -91,6 +91,7 @@ import (
 // UIServer represents our web server
 type UIServer interface {
 	Serve()
+	SwitchUI(path string)
 	Stop()
 }
 

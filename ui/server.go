@@ -34,10 +34,14 @@ import (
 
 const tequilapiUrlPrefix = "/tequilapi"
 
+// TODO see if there is a way to swap staticFS serving instead of recreating gin.Engine
+
 // Server represents our web UI server
 type Server struct {
-	srvs      []*http.Server
-	discovery discovery.LANDiscovery
+	srvs         []*http.Server
+	discovery    discovery.LANDiscovery
+	ginEngine    *gin.Engine
+	reverseProxy gin.HandlerFunc
 }
 
 type jwtAuthenticator interface {
@@ -72,14 +76,17 @@ var corsConfig = cors.Config{
 
 // NewServer creates a new instance of the server for the given port
 // you can chain addresses with ',' i.e. "192.168.0.1,127.0.0.1"
-func NewServer(bindAddress string, port int, tequilapiAddress string, tequilapiPort int, authenticator jwtAuthenticator, httpClient *requests.HTTPClient) *Server {
+func NewServer(
+	bindAddress string,
+	port int,
+	tequilapiAddress string,
+	tequilapiPort int,
+	authenticator jwtAuthenticator,
+	httpClient *requests.HTTPClient,
+) *Server {
 	gin.SetMode(gin.ReleaseMode)
-	r := gin.New()
-	r.Use(gin.Recovery())
-	r.NoRoute(ReverseTequilapiProxy(tequilapiAddress, tequilapiPort, authenticator))
-	r.Use(cors.New(corsConfig))
-
-	r.StaticFS("/", godvpnweb.Assets)
+	reverseProxy := ReverseTequilapiProxy(tequilapiAddress, tequilapiPort, authenticator)
+	r := ginEngine(reverseProxy, "")
 
 	addrs := strings.Split(bindAddress, ",")
 
@@ -93,9 +100,40 @@ func NewServer(bindAddress string, port int, tequilapiAddress string, tequilapiP
 	}
 
 	return &Server{
-		srvs:      srvs,
-		discovery: discovery.NewLANDiscoveryService(port, httpClient),
+		srvs:         srvs,
+		discovery:    discovery.NewLANDiscoveryService(port, httpClient),
+		ginEngine:    r,
+		reverseProxy: reverseProxy,
 	}
+}
+
+func ginEngine(reverseProxy gin.HandlerFunc, uiAssetsPath string) *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.NoRoute(reverseProxy)
+	r.Use(cors.New(corsConfig))
+
+	if uiAssetsPath == "bundled" {
+		r.StaticFS("/", godvpnweb.Assets)
+	} else {
+		r.StaticFS("/", http.Dir(uiAssetsPath))
+	}
+	return r
+}
+
+// SwitchUI switch nodeUI version
+func (s *Server) SwitchUI(path string) {
+	for i := range s.srvs {
+		s.srvs[i].Handler = ginEngine(s.reverseProxy, path)
+	}
+	return
+	//if path == "bundled" {
+	//	s.ginEngine.StaticFS("/", godvpnweb.Assets)
+	//	return
+	//}
+	//
+	//s.ginEngine.StaticFS("/", http.Dir(path))
 }
 
 // Serve starts servers
