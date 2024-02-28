@@ -79,7 +79,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.1.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.3.0 // indirect
 	github.com/aws/smithy-go v1.3.1 // indirect
-	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
