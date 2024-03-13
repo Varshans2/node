@@ -64,7 +64,7 @@ require (
 	golang.org/x/sys v0.1.0
 	golang.zx2c4.com/wireguard v0.0.20200320
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200324154536-ceff61240acf
-	google.golang.org/protobuf v1.26.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
